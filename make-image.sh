@@ -103,7 +103,7 @@ create_filesystems()
     BOOT_DEVICE="/dev/${mapper}${LOOP}p1"
     ROOT_DEVICE="/dev/${mapper}${LOOP}p2"
     (set -x; mkfs.ext2 -L nanopi-boot "${BOOT_DEVICE}")
-    (set -x; mkfs.f2fs -l nanopi-root "${ROOT_DEVICE}")
+    (set -x; mkfs.ext2 -l nanopi-root "${ROOT_DEVICE}")
 }
 
 mount_filesystems()

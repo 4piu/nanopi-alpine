@@ -57,7 +57,7 @@ cleanup()
 {
     set +eu
     # We end up in this function at the end of script execution
-    [ -n "${ROOT_MOUNT:-}" -o -n "${BOOT_MOUNT:-}" ] && unmount_filesystems
+    [ -n "${ROOT_MOUNT:-}" ] && unmount_filesystems
     [ -n "${LOOP:-}" ] && unmap_partitions
 }
 trap cleanup 0
@@ -69,8 +69,7 @@ write_partition_table()
 # partition table of ${IMAGE}
 unit: sectors
 
-${IMAGE}p1 : start=2048, size=131072, Id=83
-${IMAGE}p2 :                          Id=83
+${IMAGE}p1 : start=2048, Id=83
 __EOF__
 }
 
@@ -99,28 +98,19 @@ install_uboot()
 
 create_filesystems()
 {
-    BOOT_DEVICE="/dev/${mapper}${LOOP}p1"
-    ROOT_DEVICE="/dev/${mapper}${LOOP}p2"
-    (set -x; mkfs.ext2 -L nanopi-boot "${BOOT_DEVICE}")
+    ROOT_DEVICE="/dev/${mapper}${LOOP}p1"
     (set -x; mkfs.ext2 -L nanopi-root "${ROOT_DEVICE}")
 }
 
 mount_filesystems()
 {
     ROOT_MOUNT="$(mktemp -d /tmp/root.XXXXXX)"
-    BOOT_MOUNT="${ROOT_MOUNT}/boot"
     (set -x; mount "${ROOT_DEVICE}" "${ROOT_MOUNT}")
-    mkdir -p "${BOOT_MOUNT}"
-    (set -x; mount "${BOOT_DEVICE}" "${BOOT_MOUNT}")
 }
 
 unmount_filesystems()
 {
     log "Unmounting and cleaning up temp mountpoints"
-    if [ -n "${BOOT_MOUNT:-}" ]; then
-        umount "${BOOT_MOUNT}"
-        rmdir "${BOOT_MOUNT}"
-    fi
     if [ -n "${ROOT_MOUNT:-}" ]; then
         umount "${ROOT_MOUNT}"
         rmdir "${ROOT_MOUNT}"
@@ -129,8 +119,9 @@ unmount_filesystems()
 
 fill_filesystems()
 {
-    (set -x; cp "${BOOTSCR}" "${KERNEL}" "${DTB}" "${BOOT_MOUNT}"/)
     (set -x; tar -C "${ROOT_MOUNT}/" -xf "${ROOTFS_TARBALL}")
+    mkdir -p "${ROOT_MOUNT}/boot"
+    (set -x; cp "${BOOTSCR}" "${KERNEL}" "${DTB}" "${ROOT_MOUNT}/boot/")
     chown 755 "${ROOT_MOUNT}"   # Make sure the root folder in the rootfs is readable by all
 }
 

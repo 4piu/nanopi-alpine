@@ -13,7 +13,7 @@ for r in main community; do
     sudo sh -c "echo '$ROOTFS_URL/$r' >> '$chroot_dir/etc/apk/repositories'"
 done
 # Create the chroot base
-sudo "$apk" add -p "$chroot_dir" --initdb -U --arch armhf --allow-untrusted alpine-base
+sudo "$apk" add -p "$chroot_dir" --initdb -U --arch armhf --allow-untrusted alpine-base e2fsprogs-extra
 if [ $? -ne 0 ]; then
     echo "Error: apk add failed"
     exit 1

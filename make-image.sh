@@ -128,7 +128,7 @@ install_uboot()
 create_filesystems()
 {
     ROOT_DEVICE="/dev/${mapper}${LOOP}p1"
-    (set -x; mkfs.ext4 -L nanopi-root "${ROOT_DEVICE}")
+    (set -x; mkfs.ext4 "${ROOT_DEVICE}")
 }
 
 mount_filesystems()

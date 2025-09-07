@@ -30,4 +30,7 @@ if [ -f "$cdir/expand-rootfs.sh" ]; then
     sudo mkdir -p "$chroot_dir/etc/local.d"
     sudo cp "$cdir/expand-rootfs.sh" "$chroot_dir/etc/local.d/expand-rootfs.start"
     sudo chmod +x "$chroot_dir/etc/local.d/expand-rootfs.start"
+    # Enable the local service to run at boot
+    sudo mkdir -p "$chroot_dir/etc/runlevels/default"
+    sudo ln -sf "/etc/init.d/local" "$chroot_dir/etc/runlevels/default/local"
 fi

@@ -13,10 +13,10 @@ UBOOT_FORMAT_CUSTOM_NAME ?= u-boot-sunxi-with-spl.bin
 UBOOT_VERSION            ?= v2025.07
 
 ALPINE_VERSION           ?= v3.22
-ALPINE_ARCH			     ?= armhf
+ALPINE_ARCH			     ?= armv7
 # Note: we build this tarball.
-ROOTFS_TARBALL = alpine-chroot-armhf.tar.gz
-ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
+ROOTFS_TARBALL = alpine-chroot-armv7.tar.gz
+ROOTFS_URL = http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
 ################################################################################
 ## Possible modifiers:
 ##  DO_UBOOT_DEFCONFIG

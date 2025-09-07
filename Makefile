@@ -34,7 +34,7 @@ KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
 ROOTFS_DIR=output/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
 
 .PHONY: all
-all: output/nanopi-alpine.img
+all: output/nanopi-alpine.img output/$(ROOTFS_TARBALL)
 
 # U-Boot
 output/boot.scr: boot.cmd
@@ -46,16 +46,16 @@ sources/u-boot.ready:
 
 sources/u-boot/.config: sources/u-boot.ready
 	if [ ! -f u-boot.config ] || [ -n '$(DO_UBOOT_DEFCONFIG)' ]; then                 \
-	    $(MAKE) -C sources/u-boot/ $(MAKEFLAGS) '$(UBOOT_BOARD_DEFCONFIG)_defconfig'; \
+	    $(MAKE) -C sources/u-boot/ '$(UBOOT_BOARD_DEFCONFIG)_defconfig'; \
 	else                                                                              \
 	    cp u-boot.config sources/u-boot/.config;                                      \
 	fi
 	if [ -n '$(DO_UBOOT_MENUCONFIG)' ]; then                                          \
-	    $(MAKE) -C sources/u-boot/ $(MAKEFLAGS) menuconfig;                           \
+	    $(MAKE) -C sources/u-boot/ menuconfig;                           \
 	fi
 
 sources/u-boot/u-boot-sunxi-with-spl.bin: sources/u-boot/.config
-	$(MAKE) -C sources/u-boot/ all
+	$(MAKE) -C sources/u-boot/ $(MAKEFLAGS) all
 
 output/$(UBOOT_FORMAT_CUSTOM_NAME): sources/u-boot/$(UBOOT_FORMAT_CUSTOM_NAME)
 	cp $^ $@
@@ -66,19 +66,19 @@ sources/linux.ready:
 	touch 'sources/linux.ready'
 
 sources/linux/.config: sources/linux.ready
-	if [ ! -f kernel.config ] || [ -n '$(DO_LINUX_DEFCONFIG)' ]; then   \
+	if [ ! -f kernel.config ] || [ -n '$(DO_LINUX_DEFCONFIG)' ]; then                \
 	    $(MAKE) -C sources/linux/ '$(KERNEL_DEFCONFIG)_defconfig';      \
-	else                                                                \
-	    cp kernel.config sources/linux/.config;                         \
+	else                                                                             \
+	    cp kernel.config sources/linux/.config;                                      \
 	fi
-	if [ -n '$(DO_LINUX_MENUCONFIG)' ]; then                            \
+	if [ -n '$(DO_LINUX_MENUCONFIG)' ]; then                                         \
 	    $(MAKE) -C sources/linux/ menuconfig;                           \
 	fi
 
 $(KERNEL_PRODUCTS): sources/linux/.config
-	$(MAKE) -C sources/linux/ zImage dtbs
+	$(MAKE) -C sources/linux/ $(MAKEFLAGS) zImage dtbs
 
-$(KERNEL_PRODUCTS_OUTPUT): $(KERNEL_PRODUCTS)
+$(KERNEL_PRODUCTS_OUTPUT) &: $(KERNEL_PRODUCTS)
 	cp $^ output/
 
 # Alpine rootfs
@@ -115,7 +115,7 @@ clean:
 
 .PHONY: distclean
 .SILENT: distclean
-distclean:
+distclean: clean
 	if [ -d u-boot/ ]; then $(MAKE) -C sources/u-boot/ clean; fi
 	if [ -d linux/ ]; then $(MAKE) -C sources/linux/ clean; fi
 	rm -rf sources/apk-tools

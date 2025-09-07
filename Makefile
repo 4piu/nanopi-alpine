@@ -13,6 +13,7 @@ UBOOT_FORMAT_CUSTOM_NAME ?= u-boot-sunxi-with-spl.bin
 UBOOT_VERSION            ?= v2025.07
 
 ALPINE_VERSION           ?= v3.22
+ALPINE_ARCH			     ?= armhf
 IMAGE_SIZE               ?= 50M
 # Note: we build this tarball.
 ROOTFS_TARBALL = alpine-chroot-armhf.tar.gz
@@ -86,7 +87,7 @@ sources/apk-tools/apk:
 	ROOTFS_URL=$(ROOTFS_URL) ./ensure-apk.sh $@
 
 $(CHROOT_DIR):sources/apk-tools/apk
-	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh $@
+	ROOTFS_URL=$(ROOTFS_URL) ALPINE_ARCH=$(ALPINE_ARCH) APK="sources/apk-tools/apk" ./build-chroot.sh $@
 
 output/$(ROOTFS_TARBALL):$(CHROOT_DIR)
 	sudo tar -C $(CHROOT_DIR) -czf $@ .

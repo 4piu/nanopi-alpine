@@ -3,8 +3,7 @@
 set -e
 
 # Get script directory and setup variables
-cdir=$(pwd)
-apk=$cdir/sources/apk-tools/apk
+cdir="$(dirname "$0")"
 chroot_dir="$(readlink -f "$1")"
 
 sudo mkdir -p "$chroot_dir/etc/apk"
@@ -12,8 +11,13 @@ sudo mkdir -p "$chroot_dir/etc/apk"
 for r in main community; do
     sudo sh -c "echo '$ROOTFS_URL/$r' >> '$chroot_dir/etc/apk/repositories'"
 done
+# Load custom packages if available
+if [ -f "$cdir/alpine-packages.txt" ]; then
+    # store list to variable
+    packages=$(grep -vE '^\s*#' "$cdir/alpine-packages.txt" | xargs)
+fi
 # Create the chroot base
-sudo "$apk" add -p "$chroot_dir" --initdb -U --arch armhf --allow-untrusted alpine-base e2fsprogs-extra
+sudo "$APK" add -p "$chroot_dir" --initdb -U --arch $ALPINE_ARCH --allow-untrusted alpine-base e2fsprogs-extra $packages
 if [ $? -ne 0 ]; then
     echo "Error: apk add failed"
     exit 1

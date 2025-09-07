@@ -1,3 +1,5 @@
 kernel.config
 u-boot.config
+alpine-packages.txt
+
 build-tmp/

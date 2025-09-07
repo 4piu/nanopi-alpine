@@ -76,6 +76,21 @@ cleanup()
 trap cleanup EXIT
 trap 'exit 1' ERR
 
+create_image_file()
+{
+    # Calculate size
+    margin_size=$(( 16 * 1024 * 1024 )) # 16MB margin
+    rootfs_size=$(sudo du -bs "${ROOTFS_DIR}" | awk '{print $1}')
+    kernel_size=$(du -bs "${KERNEL}" | awk '{print $1}')
+    dtb_size=$(du -bs "${DTB}" | awk '{print $1}')
+    bootscr_size=$(du -bs "${BOOTSCR}" | awk '{print $1}')
+    uboot_size=$(du -bs "${UBOOT}" | awk '{print $1}')
+    total_size=$(( rootfs_size + kernel_size + dtb_size + bootscr_size + uboot_size + margin_size ))
+    log "Creating empty image file: ${IMAGE} (${total_size}B)"
+    truncate -s "${total_size}" "${IMAGE}"
+    sync
+}
+
 write_partition_table()
 {
     log "Creating partition table"
@@ -133,20 +148,21 @@ unmount_filesystems()
 
 fill_filesystems()
 {
-    (set -x; tar -C "${ROOT_MOUNT}/" -xf "${ROOTFS_TARBALL}")
+    (set -x; cp -a "${ROOTFS_DIR}/." "${ROOT_MOUNT}/")
     mkdir -p "${ROOT_MOUNT}/boot"
     (set -x; cp "${BOOTSCR}" "${KERNEL}" "${DTB}" "${ROOT_MOUNT}/boot/")
 }
 
 main()
 {
-    need_env_var UBOOT BOOTSCR KERNEL DTB ROOTFS_TARBALL IMAGE
+    need_env_var UBOOT BOOTSCR KERNEL DTB ROOTFS_DIR IMAGE
 
     # Enable strict error handling
     set -euo pipefail
     
     log "Starting image creation: ${IMAGE}"
     
+    create_image_file
     write_partition_table
     install_uboot
     map_partitions

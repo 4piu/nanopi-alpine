@@ -14,7 +14,6 @@ UBOOT_VERSION            ?= v2025.07
 
 ALPINE_VERSION           ?= v3.22
 ALPINE_ARCH			     ?= armhf
-IMAGE_SIZE               ?= 50M
 # Note: we build this tarball.
 ROOTFS_TARBALL = alpine-chroot-armhf.tar.gz
 ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
@@ -32,7 +31,7 @@ ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
 
 KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dts/$(KERNEL_DT_FILE))
 KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
-CHROOT_DIR=output/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
+ROOTFS_DIR=output/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
 
 .PHONY: all
 all: output/nanopi-alpine.img
@@ -86,28 +85,27 @@ $(KERNEL_PRODUCTS_OUTPUT): $(KERNEL_PRODUCTS)
 sources/apk-tools/apk:
 	ROOTFS_URL=$(ROOTFS_URL) ./ensure-apk.sh $@
 
-$(CHROOT_DIR):sources/apk-tools/apk
+$(ROOTFS_DIR):sources/apk-tools/apk
 	ROOTFS_URL=$(ROOTFS_URL) ALPINE_ARCH=$(ALPINE_ARCH) APK="sources/apk-tools/apk" ./build-chroot.sh $@
 
-output/$(ROOTFS_TARBALL):$(CHROOT_DIR)
-	sudo tar -C $(CHROOT_DIR) -czf $@ .
+output/$(ROOTFS_TARBALL):$(ROOTFS_DIR)
+	sudo tar -C $(ROOTFS_DIR) -czf $@ .
 
 # Final image
-output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr output/$(ROOTFS_TARBALL) $(KERNEL_PRODUCTS_OUTPUT)
-	truncate -s '$(IMAGE_SIZE)' '$@'
+output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr $(ROOTFS_DIR) $(KERNEL_PRODUCTS_OUTPUT)
 	sudo sh -c "                                       \
 	    UBOOT='output/$(UBOOT_FORMAT_CUSTOM_NAME)'     \
 	    BOOTSCR='output/boot.scr'                      \
 	    KERNEL='$(word 1,$(KERNEL_PRODUCTS_OUTPUT))'   \
 	    DTB='$(word 2,$(KERNEL_PRODUCTS_OUTPUT))'      \
-	    ROOTFS_TARBALL='output/$(ROOTFS_TARBALL)'      \
+	    ROOTFS_DIR='$(ROOTFS_DIR)'                     \
 	    IMAGE='$@'                                     \
 	    ./make-image.sh"
 
 .PHONY: clean
 .SILENT: clean
 clean:
-	if [ -d $(CHROOT_DIR) ]; then sudo rm -rf $(CHROOT_DIR); fi
+	if [ -d $(ROOTFS_DIR) ]; then sudo rm -rf $(ROOTFS_DIR); fi
 	rm -rf output/*
 
 .PHONY: distclean

@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 # Auto-expand rootfs script
 # This script expands the root partition and filesystem to fill the entire SD card
 

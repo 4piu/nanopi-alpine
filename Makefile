@@ -31,18 +31,15 @@ ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
 
 KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dts/$(KERNEL_DT_FILE))
 KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
+CHROOT_DIR=output/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
 
 .PHONY: all
 all: output/nanopi-alpine.img
 
-CHROOT_DIR=build-tmp/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
+# U-Boot
+output/boot.scr: boot.cmd
+	mkimage -C none -A arm -T script -d '$^' '$@'
 
-$(CHROOT_DIR):
-	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh $@
-
-output/$(ROOTFS_TARBALL):$(CHROOT_DIR)
-	sudo tar -C $(CHROOT_DIR) -czf $@ .
-	
 sources/u-boot.ready:
 	git clone --depth 1 --branch $(UBOOT_VERSION) git://git.denx.de/u-boot.git 'sources/u-boot' && \
 	touch 'sources/u-boot.ready'
@@ -63,6 +60,7 @@ sources/u-boot/u-boot-sunxi-with-spl.bin: sources/u-boot/.config
 output/$(UBOOT_FORMAT_CUSTOM_NAME): sources/u-boot/$(UBOOT_FORMAT_CUSTOM_NAME)
 	cp $^ $@
 
+# Linux kernel
 sources/linux.ready:
 	git clone --depth=1 --branch $(KERNEL_VERSION) https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git 'sources/linux/' && \
 	touch 'sources/linux.ready'
@@ -83,9 +81,17 @@ $(KERNEL_PRODUCTS): sources/linux/.config
 $(KERNEL_PRODUCTS_OUTPUT): $(KERNEL_PRODUCTS)
 	cp $^ output/
 
-output/boot.scr: boot.cmd
-	mkimage -C none -A arm -T script -d '$^' '$@'
+# Alpine rootfs
+sources/apk-tools/apk:
+	ROOTFS_URL=$(ROOTFS_URL) ./ensure-apk.sh $@
 
+$(CHROOT_DIR):sources/apk-tools/apk
+	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh $@
+
+output/$(ROOTFS_TARBALL):$(CHROOT_DIR)
+	sudo tar -C $(CHROOT_DIR) -czf $@ .
+
+# Final image
 output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr output/$(ROOTFS_TARBALL) $(KERNEL_PRODUCTS_OUTPUT)
 	truncate -s '$(IMAGE_SIZE)' '$@'
 	sudo sh -c "                                       \
@@ -99,11 +105,15 @@ output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr out
 
 .PHONY: clean
 clean:
-#	if [ -d u-boot/ ]; then $(MAKE) -C sources/u-boot/ clean; fi
-#	if [ -d linux/ ]; then $(MAKE) -C sources/linux/ clean; fi
-	rm -f output/*
-	rm -rf build-tmp/
+	if [ -d $(CHROOT_DIR) ]; then sudo rm -rf $(CHROOT_DIR); fi
+	rm -rf output/*
 
 .PHONY: distclean
 distclean:
-	rm -rf sources/*
+	if [ -d u-boot/ ]; then $(MAKE) -C sources/u-boot/ clean; fi
+	if [ -d linux/ ]; then $(MAKE) -C sources/linux/ clean; fi
+	rm -rf sources/apk-tools
+
+.PHONY: check-tools
+check-tools:
+	./check-tools.sh

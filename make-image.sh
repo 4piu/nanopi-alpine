@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -euo pipefail
+
 readonly CCred=`printf '\033[0;31m'`
 readonly CCyellow=`printf '\033[0;33m'`
 readonly CCgreen=`printf '\033[92m'`
@@ -122,7 +122,6 @@ fill_filesystems()
     (set -x; tar -C "${ROOT_MOUNT}/" -xf "${ROOTFS_TARBALL}")
     mkdir -p "${ROOT_MOUNT}/boot"
     (set -x; cp "${BOOTSCR}" "${KERNEL}" "${DTB}" "${ROOT_MOUNT}/boot/")
-    chown 755 "${ROOT_MOUNT}"   # Make sure the root folder in the rootfs is readable by all
 }
 
 main()

@@ -2,19 +2,29 @@
 # Auto-expand rootfs script
 # This script expands the root partition and filesystem to fill the entire SD card
 
-ROOTDEV="/dev/mmcblk0"
+ROOT_DEV="/dev/mmcblk0"
+ROOT_PART="/dev/mmcblk0p1"
 FIRST_SECTOR=2048
 
+LOG_PREFIX="expand-rootfs:"
+LOG_OUT="/dev/kmsg"
+
 # Check if root device exists
-if [ ! -b "$ROOTDEV" ]; then
-    echo "Root device $ROOTDEV not found. Exiting."
+if [ ! -b "$ROOT_DEV" ]; then
+    echo "$LOG_PREFIX Root device $ROOT_DEV not found. Exiting." | tee $LOG_OUT
     exit 1
 fi
 
-echo "Expanding root partition"
+# Get partition size difference
+size_diff=$(( $(blockdev --getsize64 "$ROOT_DEV") - $(blockdev --getsize64 "$ROOT_PART") ))
+echo "$LOG_PREFIX Size difference: $size_diff bytes" | tee $LOG_OUT
+
+# If size difference is less than 10MB, assume no need to expand
+if [ $size_diff -gt $((10 * 1024 * 1024)) ]; then
+    echo "$LOG_PREFIX Expanding root partition" | tee $LOG_OUT
 
 # Use fdisk to expand the partition
-fdisk "$ROOTDEV" <<FDISK_EOF > /dev/null 2>&1
+fdisk "$ROOT_DEV" <<FDISK_EOF > /dev/null 2>&1
 d
 n
 p
@@ -23,17 +33,11 @@ $FIRST_SECTOR
 
 w
 FDISK_EOF
-
-# Resize the filesystem
-echo "Expanding ext4 filesystem..."
-resize2fs -f "${ROOTDEV}p1"
-
-if [ $? -ne 0 ]; then
-    echo "Error: resize2fs command failed with return code $?. Exiting."
-    exit 1
-else 
-    echo "Root filesystem expansion completed successfully!"
+echo "$LOG_PREFIX Partition table updated. Rebooting to apply changes..." | tee $LOG_OUT
+reboot && exit 0
 fi
 
-# Remove this script after successful expansion
-rm -f /etc/local.d/expand-rootfs.start && reboot
+# Resize the filesystem (after reboot)
+set -e
+echo "$LOG_PREFIX Expanding ext4 filesystem..." | tee $LOG_OUT
+resize2fs -f "$ROOT_PART" && rm -f /etc/local.d/expand-rootfs.start && reboot

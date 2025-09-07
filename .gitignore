@@ -1,2 +1,3 @@
 kernel.config
+u-boot.config
 build-tmp/

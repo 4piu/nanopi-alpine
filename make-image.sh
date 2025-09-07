@@ -1,6 +1,5 @@
 #!/bin/bash
 #set -euo pipefail
-repobase="http://dl-cdn.alpinelinux.org/alpine/v3.17"
 readonly CCred=`printf '\033[0;31m'`
 readonly CCyellow=`printf '\033[0;33m'`
 readonly CCgreen=`printf '\033[92m'`

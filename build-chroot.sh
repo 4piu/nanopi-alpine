@@ -1,9 +1,8 @@
 #!/bin/bash
 cdir=$(pwd)
 find_apk_tools () {
-    local burl pkg
+    local burl pkg tmpdir
     apk=$(which apk)
-    
     if [ -z "$apk" ]; then # get apk-tools-static
         echo "##############################"
         echo "# You do not have apk, so we #"
@@ -16,48 +15,64 @@ find_apk_tools () {
             x86_64|x86|aarch64) arch="$arch";;
             armv7*) arch="armv7";;
             *) echo "unknown native arch '$arch'"
-            exit 1	
+            exit 1
         esac
         burl="$ROOTFS_URL/main/$arch"
-        wget -O index.html "$burl"
-        pkg=$(grep apk-tools-static index.html |sed 's!.*apk-!apk-!;s!<.*!!')
-        wget -O apk-tools-static.apk "$burl/$pkg"
-        mkdir apk
-        cd apk
-        tar -xf ../apk-tools-static.apk
-        pkg=$(find . -name 'apk.static')
-        mv "$pkg" .
+        tmpdir="build-tmp"
+        mkdir -p "$tmpdir/apk"
+        wget -O "$tmpdir/index.html" "$burl"
+        pkg=$(grep apk-tools-static "$tmpdir/index.html" |sed 's!.*apk-!apk-!;s!<.*!!')
+        wget -O "$tmpdir/apk-tools-static.apk" "$burl/$pkg"
+        cd "$tmpdir/apk"
+        tar -xf "../apk-tools-static.apk"
+        pkg=$(find . -name 'apk.static' | head -n1)
+        if [ -n "$pkg" ] && [ -f "$pkg" ]; then
+            mv "$pkg" .
+        else
+            echo "Error: apk.static not found after extraction"
+            exit 1
+        fi
         apk="$(pwd)/apk.static"
         cd "$cdir"
     fi
 }
 
 create_chroot () {
-    local bn sd out
-    sd=$(dirname "$1")
-    bn=$(basename "$1"|sed 's!\.tar\..*!!')
-    out="$sd/$bn"
-    
-    binlinks="ln mount less grep md5sum sh getty login sed ash ls vi"
-    mkdir -p "$out/etc/apk"
-    for r in main community; do
-        echo "$ROOTFS_URL/$r" >> "$out/etc/apk/repositories"
-    done
-    sudo "$apk" add -p "$out" --initdb -U --arch armhf --allow-untrusted alpine-base
-    sudo sed -i 's!^#ttyS0!ttyS0!' "$out/etc/inittab"
+    local chroot_dir tarball_file
+    chroot_dir="$1"
+    tarball_file="$2"
 
-    cd "$out/bin"
+    binlinks="ln mount less grep md5sum sh getty login sed ash ls vi"
+    mkdir -p "$chroot_dir/etc/apk"
+    # Add repositories
+    for r in main community; do
+        echo "$ROOTFS_URL/$r" >> "$chroot_dir/etc/apk/repositories"
+    done
+    # Create the chroot base
+    sudo "$apk" add -p "$chroot_dir" --initdb -U --arch armhf --allow-untrusted alpine-base
+    if [ $? -ne 0 ]; then
+        echo "Error: apk add failed"
+        exit 1
+    fi
+    # Enable ttyS0 console
+    sudo sed -i 's!^#ttyS0!ttyS0!' "$chroot_dir/etc/inittab"
+
+    # Create some links to busybox
+    cd "$chroot_dir/bin"
     for b in $binlinks; do
         if [ ! -e "$b" ]; then
             sudo ln -s busybox $b
 	fi
     done
+    # Create symlinks for init and getty
     cd ../sbin
     if [ ! -e init ]; then sudo ln -s /bin/sh init; fi
     if [ ! -e getty ]; then sudo ln -s /bin/getty getty; fi
+    # Ensure root owns everything
     cd ..
     sudo chown -R root:root *
-    sudo tar -cf "../$bn.tar.gz" *
+    # Create the tarball
+    sudo tar -cf "$cdir/$tarball_file" *
     cd "$cdir"
 }
 
@@ -81,13 +96,13 @@ check_tools () {
         w=$(ls $l/arm-*-gcc)
         if [ -z "$w" ]; then missing="$missing arm-xxx-gcc"; fi
     fi
-    if [ -n "$missing" ]; then 
+    if [ -n "$missing" ]; then
         echo "These tools are missing in your system. Please install them first"
 	echo "$missing"
 	exit 1
     fi
 
 }
-check_tools "$2"
+check_tools "${CROSS_COMPILE}gcc"
 find_apk_tools
-create_chroot "$1"
+create_chroot "$1" "$2"

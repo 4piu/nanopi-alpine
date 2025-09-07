@@ -53,14 +53,28 @@ need_env_var()
     done
 }
 
+# Track if image creation was successful
+IMAGE_CREATION_SUCCESS=false
+
 cleanup()
 {
+    local exit_code=$?
     set +eu
+    
     # We end up in this function at the end of script execution
     [ -n "${ROOT_MOUNT:-}" ] && unmount_filesystems
     [ -n "${LOOP:-}" ] && unmap_partitions
+    
+    # Remove broken image file if creation failed
+    if [ $exit_code -ne 0 ] && [ "$IMAGE_CREATION_SUCCESS" = false ] && [ -n "${IMAGE:-}" ] && [ -f "${IMAGE}" ]; then
+        log "Image creation failed, removing broken image file: ${IMAGE}"
+        rm -f "${IMAGE}"
+    fi
 }
-trap cleanup 0
+
+# Trap both EXIT and error signals
+trap cleanup EXIT
+trap 'exit 1' ERR
 
 write_partition_table()
 {
@@ -128,12 +142,21 @@ main()
 {
     need_env_var UBOOT BOOTSCR KERNEL DTB ROOTFS_TARBALL IMAGE
 
+    # Enable strict error handling
+    set -euo pipefail
+    
+    log "Starting image creation: ${IMAGE}"
+    
     write_partition_table
     install_uboot
     map_partitions
     create_filesystems
     mount_filesystems
     fill_filesystems
+    
+    # Mark image creation as successful
+    IMAGE_CREATION_SUCCESS=true
+    log "Image creation completed successfully: ${IMAGE}"
 }
 
 main

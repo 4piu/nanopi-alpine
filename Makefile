@@ -104,11 +104,13 @@ output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr out
 	    ./make-image.sh"
 
 .PHONY: clean
+.SILENT: clean
 clean:
 	if [ -d $(CHROOT_DIR) ]; then sudo rm -rf $(CHROOT_DIR); fi
 	rm -rf output/*
 
 .PHONY: distclean
+.SILENT: distclean
 distclean:
 	if [ -d u-boot/ ]; then $(MAKE) -C sources/u-boot/ clean; fi
 	if [ -d linux/ ]; then $(MAKE) -C sources/linux/ clean; fi
@@ -117,3 +119,16 @@ distclean:
 .PHONY: check-tools
 check-tools:
 	./check-tools.sh
+
+.PHONY: install
+.SILENT: install
+install: output/nanopi-alpine.img
+	sudo lsblk
+	read -p "Enter the SD card device (e.g., /dev/sdX): " DEV; \
+	if [ -z "$$DEV" ]; then echo "No device entered. Aborting."; exit 1; fi ; \
+	read -p "Are you sure you want to write to $$DEV? This will erase all data on the device. (yes/no): " CONFIRM; \
+	if [ "$$CONFIRM" != "yes" ]; then echo "Aborting."; exit 1; fi; \
+	echo "Writing image to $$DEV..."; \
+	sudo dd if=output/nanopi-alpine.img of="$$DEV" bs=4M status=progress conv=fsync; \
+	sync; \
+	echo "Image written to $$DEV. You can now remove the SD card."

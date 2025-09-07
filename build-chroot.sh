@@ -79,7 +79,7 @@ create_chroot () {
 check_tools () {
     local list missing l w
     missing=""
-    list="gcc tar sed grep wget sfdisk mkfs.f2fs mkfs.ext2 losetup"
+    list="gcc tar sed grep wget sfdisk mkfs.ext4 losetup"
     l=$(which kpartx)
     if [ -z "$l" ]; then
         l=$(which partx)

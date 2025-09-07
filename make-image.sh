@@ -79,7 +79,7 @@ trap 'exit 1' ERR
 create_image_file()
 {
     # Calculate size
-    margin_size=$(( 16 * 1024 * 1024 )) # 16MB margin
+    margin_size=$(( 20 * 1024 * 1024 )) # 20MB margin
     rootfs_size=$(sudo du -bs "${ROOTFS_DIR}" | awk '{print $1}')
     kernel_size=$(du -bs "${KERNEL}" | awk '{print $1}')
     dtb_size=$(du -bs "${DTB}" | awk '{print $1}')

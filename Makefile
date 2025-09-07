@@ -88,11 +88,16 @@ sources/apk-tools/apk:
 $(ROOTFS_DIR):sources/apk-tools/apk
 	ROOTFS_URL=$(ROOTFS_URL) ALPINE_ARCH=$(ALPINE_ARCH) APK="sources/apk-tools/apk" ./build-chroot.sh $@
 
-output/$(ROOTFS_TARBALL):$(ROOTFS_DIR)
+# Build and install kernel modules to rootfs
+$(ROOTFS_DIR)/lib/modules: $(ROOTFS_DIR) $(KERNEL_PRODUCTS)
+	$(MAKE) -C sources/linux/ $(MAKEFLAGS) modules
+	sudo $(MAKE) -C sources/linux/ $(MAKEFLAGS) INSTALL_MOD_PATH=$(abspath $(ROOTFS_DIR)) modules_install
+
+output/$(ROOTFS_TARBALL): $(ROOTFS_DIR)/lib/modules
 	sudo tar -C $(ROOTFS_DIR) -czf $@ .
 
 # Final image
-output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr $(ROOTFS_DIR) $(KERNEL_PRODUCTS_OUTPUT)
+output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr $(ROOTFS_DIR)/lib/modules $(KERNEL_PRODUCTS_OUTPUT)
 	sudo sh -c "                                       \
 	    UBOOT='output/$(UBOOT_FORMAT_CUSTOM_NAME)'     \
 	    BOOTSCR='output/boot.scr'                      \

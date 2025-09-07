@@ -10,12 +10,12 @@ KERNEL_DEFCONFIG         ?= sunxi
 
 UBOOT_BOARD_DEFCONFIG    ?= nanopi_neo
 UBOOT_FORMAT_CUSTOM_NAME ?= u-boot-sunxi-with-spl.bin
-UBOOT_VERSION            ?= v2023.01 # was v2017.11
+UBOOT_VERSION            ?= v2025.07
 
 IMAGE_SIZE               ?= 4000M
 # Note: we build this tarball.
 ROOTFS_TARBALL = alpine-chroot-armhf.tar.gz
-ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/v3.17
+ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/v3.22
 ################################################################################
 ## Possible modifiers:
 ##  DO_UBOOT_DEFCONFIG
@@ -28,7 +28,7 @@ ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/v3.17
 TSTAMP:=$(shell date +'%Y%m%d-%H%M%S')
 SDCARD_IMAGE:=nanopi-alpine-$(TSTAMP).img
 
-KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dts/$(KERNEL_INTREE_DT_NAME).dtb)
+KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dts/allwinner/$(KERNEL_INTREE_DT_NAME).dtb)
 KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
 
 # export MKFS_F2FS=/usr/sbin/mkfs.f2fs
@@ -39,7 +39,7 @@ all: output/nanopi-alpine.img
 
 
 sources/$(ROOTFS_TARBALL):
-	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot $@ $(CROSS_COMPILE)gcc
+	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh $@ $(CROSS_COMPILE)gcc
 
 .SECONDARY: sources/linux.git
 sources/u-boot.git:

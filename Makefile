@@ -13,7 +13,7 @@ UBOOT_FORMAT_CUSTOM_NAME ?= u-boot-sunxi-with-spl.bin
 UBOOT_VERSION            ?= v2025.07
 
 ALPINE_VERSION           ?= v3.22
-IMAGE_SIZE               ?= 1000M
+IMAGE_SIZE               ?= 50M
 # Note: we build this tarball.
 ROOTFS_TARBALL = alpine-chroot-armhf.tar.gz
 ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
@@ -32,16 +32,17 @@ ROOTFS_URL =http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}
 KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dts/$(KERNEL_DT_FILE))
 KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
 
-# export MKFS_F2FS=/usr/sbin/mkfs.f2fs
-# export SLOAD_F2FS=/usr/sbin/sload.f2fs
-
 .PHONY: all
 all: output/nanopi-alpine.img
 
+CHROOT_DIR=build-tmp/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
 
-output/$(ROOTFS_TARBALL):
-	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh sources/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!') $@
+$(CHROOT_DIR):
+	ROOTFS_URL=$(ROOTFS_URL) ./build-chroot.sh $@
 
+output/$(ROOTFS_TARBALL):$(CHROOT_DIR)
+	sudo tar -C $(CHROOT_DIR) -czf $@ .
+	
 sources/u-boot.ready:
 	git clone --depth 1 --branch $(UBOOT_VERSION) git://git.denx.de/u-boot.git 'sources/u-boot' && \
 	touch 'sources/u-boot.ready'

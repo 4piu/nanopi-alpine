@@ -38,11 +38,9 @@ find_apk_tools () {
 }
 
 create_chroot () {
-    local chroot_dir tarball_file
-    chroot_dir="$1"
-    tarball_file="$2"
+    local chroot_dir
+    chroot_dir="$(readlink -f "$1")"
 
-    binlinks="ln mount less grep md5sum sh getty login sed ash ls vi"
     mkdir -p "$chroot_dir/etc/apk"
     # Add repositories
     for r in main community; do
@@ -59,21 +57,27 @@ create_chroot () {
 
     # Create some links to busybox
     cd "$chroot_dir/bin"
+    binlinks="ln mount less grep md5sum sh getty login sed ash ls vi fdisk"
     for b in $binlinks; do
         if [ ! -e "$b" ]; then
             sudo ln -s busybox $b
 	fi
     done
     # Create symlinks for init and getty
-    cd ../sbin
+    cd "$chroot_dir/sbin"
     if [ ! -e init ]; then sudo ln -s /bin/sh init; fi
     if [ ! -e getty ]; then sudo ln -s /bin/getty getty; fi
+    
+    # Add auto-expand rootfs script
+    if [ -f "$cdir/expand-rootfs.sh" ]; then
+        sudo mkdir -p "$chroot_dir/etc/local.d"
+        sudo cp "$cdir/expand-rootfs.sh" "$chroot_dir/etc/local.d/expand-rootfs.start"
+        sudo chmod +x "$chroot_dir/etc/local.d/expand-rootfs.start"
+    fi
+    
     # Ensure root owns everything
     cd ..
     sudo chown -R root:root *
-    # Create the tarball
-    sudo tar -cf "$cdir/$tarball_file" *
-    cd "$cdir"
 }
 
 check_tools () {
@@ -105,4 +109,4 @@ check_tools () {
 }
 check_tools "${CROSS_COMPILE}gcc"
 find_apk_tools
-create_chroot "$1" "$2"
+create_chroot "$1"

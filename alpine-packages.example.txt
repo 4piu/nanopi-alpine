@@ -1,3 +1,6 @@
 networkmanager-tui
 networkmanager-wifi
+linux-firmware-rtlwifi
+linux-firmware-rtw88
+wireless-regdb
 openssh

@@ -33,12 +33,33 @@ KERNEL_PRODUCTS=$(addprefix sources/linux/,arch/arm/boot/zImage arch/arm/boot/dt
 KERNEL_PRODUCTS_OUTPUT=$(addprefix output/,$(notdir $(KERNEL_PRODUCTS)))
 ROOTFS_DIR=output/$(shell echo $(ROOTFS_TARBALL) | sed 's!\.tar\..*!!')
 
+# DT Overlays
+OVERLAY_SOURCES=$(wildcard overlay/*.dts)
+OVERLAY_TARGETS=$(patsubst overlay/%.dts,output/overlay/%.dtbo,$(OVERLAY_SOURCES))
+
 .PHONY: all
 all: output/nanopi-alpine.img output/$(ROOTFS_TARBALL)
 
+# DT Overlays
+$(OVERLAY_TARGETS): output/overlay/%.dtbo: overlay/%.dts
+	@mkdir -p output/overlay
+	dtc -@ -I dts -O dtb -o $@ $<
+
+.PHONY: overlays
+overlays: $(OVERLAY_TARGETS)
+
+
 # U-Boot
-output/boot.scr: boot.cmd
-	mkimage -C none -A arm -T script -d '$^' '$@'
+output/boot.scr: boot.cmd $(OVERLAY_TARGETS)
+	@# Generate dynamic overlay list from actual overlay files
+	@if [ -n "$(OVERLAY_TARGETS)" ]; then \
+		overlay_list=$$(for f in $(OVERLAY_TARGETS); do basename $$f; done | tr '\n' ' '); \
+		sed "s/setenv overlay_files \"[^\"]*\"/setenv overlay_files \"$$overlay_list\"/" boot.cmd > boot.cmd.tmp; \
+	else \
+		sed "s/setenv overlay_files \"[^\"]*\"/setenv overlay_files \"\"/" boot.cmd > boot.cmd.tmp; \
+	fi
+	mkimage -C none -A arm -T script -d boot.cmd.tmp '$@'
+	@rm -f boot.cmd.tmp
 
 sources/u-boot.ready:
 	git clone --depth 1 --branch $(UBOOT_VERSION) git://git.denx.de/u-boot.git 'sources/u-boot' && \
@@ -97,12 +118,13 @@ output/$(ROOTFS_TARBALL): $(ROOTFS_DIR)/lib/modules
 	sudo tar -C $(ROOTFS_DIR) -czf $@ .
 
 # Final image
-output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr $(ROOTFS_DIR)/lib/modules $(KERNEL_PRODUCTS_OUTPUT)
+output/nanopi-alpine.img: output/$(UBOOT_FORMAT_CUSTOM_NAME) output/boot.scr $(ROOTFS_DIR)/lib/modules $(KERNEL_PRODUCTS_OUTPUT) $(OVERLAY_TARGETS)
 	sudo sh -c "                                       \
 	    UBOOT='output/$(UBOOT_FORMAT_CUSTOM_NAME)'     \
 	    BOOTSCR='output/boot.scr'                      \
 	    KERNEL='$(word 1,$(KERNEL_PRODUCTS_OUTPUT))'   \
 	    DTB='$(word 2,$(KERNEL_PRODUCTS_OUTPUT))'      \
+		DTBO_DIR='output/overlay'					   \
 	    ROOTFS_DIR='$(ROOTFS_DIR)'                     \
 	    IMAGE='$@'                                     \
 	    ./make-image.sh"

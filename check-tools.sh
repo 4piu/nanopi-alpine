@@ -11,7 +11,7 @@ missing_tools=()
 found_tools=()
 
 # Core build tools required
-required_tools="gcc make tar sed grep wget sfdisk mkfs.ext4 losetup xargs mkimage du"
+required_tools="gcc make tar sed grep wget sfdisk mkfs.ext4 losetup xargs mkimage du dtc"
 
 echo "Checking for required build tools..."
 

@@ -151,6 +151,15 @@ fill_filesystems()
     (set -x; cp -a "${ROOTFS_DIR}/." "${ROOT_MOUNT}/")
     mkdir -p "${ROOT_MOUNT}/boot"
     (set -x; cp "${BOOTSCR}" "${KERNEL}" "${DTB}" "${ROOT_MOUNT}/boot/")
+    
+    # Copy device tree overlays if they exist
+    if [ -n "${DTBO_DIR:-}" ] && [ -d "${DTBO_DIR}" ] && [ "$(ls -A "${DTBO_DIR}" 2>/dev/null)" ]; then
+        log "Copying device tree overlays from ${DTBO_DIR} to /boot/overlay"
+        mkdir -p "${ROOT_MOUNT}/boot/overlay"
+        (set -x; cp "${DTBO_DIR}"/*.dtbo "${ROOT_MOUNT}/boot/overlay/" 2>/dev/null || true)
+    else
+        log "No device tree overlays found in ${DTBO_DIR:-output/overlay}"
+    fi
 }
 
 main()
